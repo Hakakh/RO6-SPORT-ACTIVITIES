@@ -226,12 +226,12 @@
             ];
 
             const sortedWords = words.map((word, index) => ({ word, index }))
-                .sort((a, b) => a.word.length - b.word.length);
+                .sort((a, b) => b.word.length - a.word.length); // Sắp xếp từ dài đến ngắn để dễ đặt hơn
 
             sortedWords.forEach(({ word, index }) => {
                 let placed = false;
                 let attempts = 0;
-                const maxAttempts = 15000;
+                const maxAttempts = 20000; // Tăng số lần thử để đảm bảo đặt được từ trên lưới lớn
 
                 while (!placed && attempts < maxAttempts) {
                     attempts++;
@@ -242,7 +242,7 @@
                     const wordToPlace = reverse ? word.split('').reverse().join('') : word;
 
                     if (canPlaceWord(wordToPlace, row, col, dir)) {
-                        placeWord(wordToPlace, row, col, dir);
+                        placeWord(wordToPlace, row, col, dir, word);
                         placedWordDirections.push({
                             word: displayWords[index],
                             direction: dir.name,
@@ -274,13 +274,13 @@
             return true;
         }
 
-        function placeWord(word, row, col, dir) {
+        function placeWord(word, row, col, dir, originalWord) {
             for (let i = 0; i < word.length; i++) {
                 const r = row + i * dir.dr;
                 const c = col + i * dir.dc;
                 grid[r][c].letter = word[i];
                 if (!grid[r][c].words) grid[r][c].words = [];
-                grid[r][c].words.push(word);
+                grid[r][c].words.push(originalWord); // Lưu từ gốc, không phải từ đảo ngược
             }
         }
 
@@ -429,14 +429,17 @@
                 const touch = e.touches[0];
                 target = document.elementFromPoint(touch.clientX, touch.clientY);
             }
-            if (target && target.classList.contains('cell') && !target.dataset.foundWords?.split(',').some(word => foundWords.includes(word))) {
-                startCell = target;
-                selectedCells = [startCell];
-                startCell.classList.add('selected');
-                document.addEventListener('mousemove', handleMove, { passive: false });
-                document.addEventListener('mouseup', handleEnd);
-                document.addEventListener('touchmove', handleMove, { passive: false });
-                document.addEventListener('touchend', handleEnd);
+            if (target && target.classList.contains('cell')) {
+                const cellWords = target.dataset.words ? target.dataset.words.split(',').filter(word => word) : [];
+                if (cellWords.some(word => !foundWords.includes(word))) {
+                    startCell = target;
+                    selectedCells = [startCell];
+                    startCell.classList.add('selected');
+                    document.addEventListener('mousemove', handleMove, { passive: false });
+                    document.addEventListener('mouseup', handleEnd);
+                    document.addEventListener('touchmove', handleMove, { passive: false });
+                    document.addEventListener('touchend', handleEnd);
+                }
             }
         }
 
@@ -449,9 +452,12 @@
             } else {
                 target = e.target;
             }
-            if (target && target.classList.contains('cell') && !target.dataset.foundWords?.split(',').some(word => foundWords.includes(word))) {
-                clearSelection();
-                selectCellsBetween(startCell, target);
+            if (target && target.classList.contains('cell')) {
+                const cellWords = target.dataset.words ? target.dataset.words.split(',').filter(word => word) : [];
+                if (cellWords.some(word => !foundWords.includes(word))) {
+                    clearSelection();
+                    selectCellsBetween(startCell, target);
+                }
             }
         }
 
@@ -486,7 +492,8 @@
                 const c = Math.round(startCol + i * stepCol);
                 if (r >= 0 && r < gridSize && c >= 0 && c < gridSize) {
                     const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
-                    if (cell && !cell.dataset.foundWords?.split(',').some(word => foundWords.includes(word))) {
+                    const cellWords = cell.dataset.words ? cell.dataset.words.split(',').filter(word => word) : [];
+                    if (cell && cellWords.some(word => !foundWords.includes(word))) {
                         selectedCells.push(cell);
                         cell.classList.add('selected');
                     }
