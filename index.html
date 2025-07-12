@@ -94,16 +94,8 @@
 <body>
     <div id="game-container">
         <h1>Spelling Game</h1>
-        <p>Listen and type the sentence you hear:</p>
-        <input type="text" id="userInput" placeholder="Type the sentence here">
-        <br>
-        <button onclick="playSentence()">Play Sentence</button>
-        <button onclick="checkAnswer()">Check Answer</button>
-        <button onclick="showHint()">Hint</button>
-        <button onclick="resetGame()">Reset Game</button>
-        <p id="completion">Completed: 0/36</p>
-        <p id="hint"></p>
-        <p id="result"></p>
+        <p>Click Start to begin the game!</p>
+        <button onclick="startGame()">Start</button>
     </div>
     <script>
         const sentences = [
@@ -147,6 +139,8 @@
 
         let currentSentenceIndex = 0;
         let completedCount = 0;
+        let isPlaying = false;
+        let autoPlayInterval;
 
         function createFirework() {
             let input = document.getElementById('userInput');
@@ -160,7 +154,7 @@
                 let particle = document.createElement('div');
                 particle.className = 'particle';
                 let angle = Math.random() * 2 * Math.PI;
-                let distance = Math.random() * 150 + 50; // Random distance 50-200px
+                let distance = Math.random() * 150 + 50;
                 let tx = Math.cos(angle) * distance;
                 let ty = Math.sin(angle) * distance;
                 particle.style.backgroundColor = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
@@ -170,24 +164,46 @@
                 particle.style.setProperty('--ty', `${ty}px`);
                 particle.style.animation = `firework ${Math.random() * 0.5 + 0.5}s linear forwards`;
                 gameContainer.appendChild(particle);
-                setTimeout(() => particle.remove(), 1000); // Remove after animation
+                setTimeout(() => particle.remove(), 1000);
             }
         }
 
         function playSentence() {
-            let utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
-            utterance.lang = 'en-US';
-            speechSynthesis.speak(utterance);
+            if (!isPlaying) {
+                isPlaying = true;
+                let utterance = new SpeechSynthesisUtterance(sentences[currentSentenceIndex]);
+                utterance.lang = 'en-US';
+                utterance.onend = () => {
+                    isPlaying = false;
+                };
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        function startAutoPlay() {
+            if (autoPlayInterval) clearInterval(autoPlayInterval);
+            autoPlayInterval = setInterval(() => {
+                if (!isPlaying) {
+                    playSentence();
+                }
+            }, 3000);
+        }
+
+        function stopAutoPlay() {
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+            }
         }
 
         function checkAnswer() {
             let userInput = document.getElementById('userInput').value.trim();
             let result = document.getElementById('result');
             if (userInput.toLowerCase() === sentences[currentSentenceIndex].toLowerCase()) {
+                stopAutoPlay();
                 result.textContent = "Correct!";
                 result.style.color = "green";
                 for (let i = 0; i < 5; i++) {
-                    setTimeout(createFirework, i * 200); // Staggered bursts
+                    setTimeout(createFirework, i * 200);
                 }
                 setTimeout(() => {
                     document.getElementById('userInput').value = '';
@@ -200,6 +216,7 @@
                         document.getElementById('game-container').innerHTML = '<h1>Congratulations! You have completed all sentences!</h1>';
                     } else {
                         playSentence();
+                        startAutoPlay();
                     }
                 }, 2000);
             } else {
@@ -213,13 +230,7 @@
             document.getElementById('hint').textContent = `Hint: ${hintText}`;
         }
 
-        function resetGame() {
-            currentSentenceIndex = 0;
-            completedCount = 0;
-            document.getElementById('userInput').value = '';
-            document.getElementById('hint').textContent = '';
-            document.getElementById('result').textContent = '';
-            document.getElementById('completion').textContent = `Completed: 0/36`;
+        function startGame() {
             document.getElementById('game-container').innerHTML = `
                 <h1>Spelling Game</h1>
                 <p>Listen and type the sentence you hear:</p>
@@ -235,6 +246,18 @@
             `;
             document.getElementById('userInput').addEventListener('keypress', handleKeyPress);
             playSentence();
+            startAutoPlay();
+        }
+
+        function resetGame() {
+            stopAutoPlay();
+            currentSentenceIndex = 0;
+            completedCount = 0;
+            document.getElementById('game-container').innerHTML = `
+                <h1>Spelling Game</h1>
+                <p>Click Start to begin the game!</p>
+                <button onclick="startGame()">Start</button>
+            `;
         }
 
         function handleKeyPress(event) {
@@ -242,10 +265,6 @@
                 checkAnswer();
             }
         }
-
-        // Initialize game
-        document.getElementById('userInput').addEventListener('keypress', handleKeyPress);
-        playSentence();
     </script>
 </body>
 </html>
